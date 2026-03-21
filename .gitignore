@@ -1,0 +1,5 @@
+bin
+obj
+obj-generated
+src-generated
+results.txt
