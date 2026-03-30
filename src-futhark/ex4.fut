@@ -10,16 +10,13 @@ def label_to_output (i: i64) (label: i8) : [i]f32 =
 def potential [n] (inputs: [n]f32) (weights: [n]f32) : f32 =
   f32.sum (map2 (*) inputs weights)
 
-def learn [i] [j] (lr: f32) (weights: [i][j]f32) (deltas: [i]f32) (outputs: [j]f32) : [i][j]f32 =
-  map2 (\wI deltaI ->
-          map2 (\wIJ xJ -> wIJ + lr * deltaI * xJ)
-               wI
-               outputs)
-       weights
-       deltas
+def gradient [i] [j] (deltas: [i]f32) (inputs: [j]f32) : [i][j]f32 =
+  map (\deltaI ->
+        map (\xJ -> deltaI * xJ) inputs)
+      deltas
 
 -- Train the model on one image
-def train_iteration (j: i64) (h: i64) (i: i64) (lr: f32) (inputs: [j]f32) (hiddenWeights: [h][j]f32) (outputWeights: [i][h]f32) (label: i8) : ([h][j]f32, [i][h]f32, f32) =
+def train_iteration (j: i64) (h: i64) (i: i64) (hiddenWeights: [h][j]f32) (outputWeights: [i][h]f32) (inputs: [j]f32) (label: i8) : ([h][j]f32, [i][h]f32, f32) =
   let Y = label_to_output i label
   let hiddenPotentials = map (potential inputs) (hiddenWeights)
   let hiddenOutputs = map sigmoid hiddenPotentials
@@ -30,18 +27,25 @@ def train_iteration (j: i64) (h: i64) (i: i64) (lr: f32) (inputs: [j]f32) (hidde
     map2 (\potH weights -> sig_derivative potH * f32.sum (map2 (*) outputDeltas weights))
          hiddenPotentials
          (transpose outputWeights)
-  let updatedHiddenWeights = learn lr hiddenWeights hiddenDeltas inputs
-  let updatedOutputWeights = learn lr outputWeights outputDeltas hiddenOutputs
+  let hiddenGradients = gradient hiddenDeltas inputs
+  let outputGradients = gradient outputDeltas hiddenOutputs
   let sumDelta = f32.sum (map f32.abs outputDeltas)
-  in (updatedHiddenWeights, updatedOutputWeights, sumDelta)
+  in (hiddenGradients, outputGradients, sumDelta)
+
+def apply_update [i][j] (lr: f32) (weights: [i][j]f32) (grads: [i][j]f32) : [i][j]f32 =
+  map2 (\wRow gRow ->
+          map2 (\w g -> w + lr * g) wRow gRow)
+       weights grads
 
 -- Train the model on a batch of N images
 entry train_batch (n: i64) (j: i64) (h: i64) (i: i64) (lr: f32) (inputss: [n][j]f32) (hiddenWeights: [h][j]f32) (outputWeights: [i][h]f32) (labels: [n]i8) : ([h][j]f32, [i][h]f32, f32) =
-  let train_with_params = train_iteration j h i lr
-  in foldl (\(hW, oW, sumDeltas) (inputs, label) ->
-              let (updatedHW, updatedOW, d) = train_with_params inputs hW oW label
-              in (updatedHW, updatedOW, sumDeltas + d))
-           (hiddenWeights, outputWeights, 0)
-           (zip inputss labels)
+  let (hiddenGradientss, outputGradientss, sumsDelta) =
+    unzip3 (map2 (train_iteration j h i hiddenWeights outputWeights) inputss labels)
+  let sumHG = reduce (map2 (map2 (+)) ) (rep (rep 0)) hiddenGradientss
+  let sumOW = reduce (map2 (map2 (+)) ) (rep (rep 0)) outputGradientss
+  let sumDelta = reduce (+) 0 sumsDelta
+  let batchLR = lr / f32.i64 n
+  in
+    (apply_update batchLR hiddenWeights sumHG, apply_update batchLR outputWeights sumOW, sumDelta)
 
 entry test: i32 = 5
