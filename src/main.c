@@ -20,7 +20,6 @@
 #define TRAINING_SAMPLE_SIZE (100)
 #define TESTING_SAMPLE_SIZE (10000)
 
-
 #define DEBUG (true)
 
 // Based on Makefile's FUTHARK variable.
@@ -128,6 +127,10 @@ float calculateError(float* Y, float* outputOutputs) {
     return error;
 }
 
+long specDiffToNanos(struct timespec start, struct timespec stop) {
+    return (stop.tv_sec * 1000000000 + stop.tv_nsec) - (start.tv_sec * 1000000000 + start.tv_nsec);
+}
+
 int main() {
     time_t seed = time(0);
 
@@ -178,6 +181,8 @@ int main() {
     bool running = true;
     int epoch = 0;
     image ret;
+    struct timespec start;
+    struct timespec stop;
 
     open_training_files();
     open_test_files();
@@ -185,6 +190,8 @@ int main() {
     while (running) {
         float learningRate = LEARNING_RATE_BASE / (1 + LEARNING_RATE_DECAY * epoch);
         float sumDelta = 0;
+
+        clock_gettime(CLOCK_MONOTONIC, &start);
 
 #if FUTHARK
         for (int k = 0; k < TRAINING_BATCH_SIZE; k++) {
@@ -257,6 +264,8 @@ int main() {
             }
         }
 #endif
+        clock_gettime(CLOCK_MONOTONIC, &stop);
+
         float errorSum = 0;
 
         for (int k = 0; k < TRAINING_SAMPLE_SIZE; k++) {
@@ -274,8 +283,8 @@ int main() {
         float error = errorSum;
 
 #if DEBUG
-        fprintf(stderr, "Epoch %d, LR: %f, Delta avg: %f, Error (%d): %.3f\n", epoch, learningRate,
-                sumDelta / TRAINING_BATCH_SIZE, TRAINING_SAMPLE_SIZE, error);
+        fprintf(stderr, "Epoch %d, LR: %f, Delta avg: %f, Error (%d): %.3f, Duration: %ld ns\n", epoch, learningRate,
+                sumDelta / TRAINING_BATCH_SIZE, TRAINING_SAMPLE_SIZE, error, specDiffToNanos(start, stop));
 #endif
 
         epoch++;
