@@ -23,8 +23,11 @@
 
 #define DEBUG (true)
 
-// Also enable FUTHARK in the Makefile or passing FUTHARK=1 in CLI args
-#define FUTHARK (true)
+// Based on Makefile's FUTHARK variable.
+// You might need to run the `clean` task when changing the value whether here or via `make`.
+#ifndef FUTHARK
+#define FUTHARK (false)
+#endif
 
 #if FUTHARK
 #include "../src-generated/ex4.h"

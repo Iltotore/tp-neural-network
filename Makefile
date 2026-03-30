@@ -34,7 +34,7 @@ endif
 
 LIBS=-lmvec -lm $(OPENCL)
 
-CC=gcc -W -Wall -Wextra -pedantic -std=c2x -O3 -march=native -ffast-math
+CC=gcc -W -Wall -Wextra -pedantic -std=c2x -O3 -march=native -ffast-math -DFUTHARK=$(FUTHARK)
 RM=rm -ifR ./$(objdir)/* ./*.bak ./*.old ./$(bindir)/* ./$(gendir)/* ./$(objgendir)/*
 
 all: $(PROG)
