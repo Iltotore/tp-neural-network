@@ -7,6 +7,7 @@ bindir=bin
 gendir=src-generated
 objgendir=obj-generated
 futdir=src-futhark
+benchdir=bench
 
 # Enable futhark/OpenCL compilation?
 # Note: you might also need to enable/disable FUTHARK preprocessing variable in src/main.c
@@ -20,7 +21,15 @@ OBJ:=$(subst $(srcdir), $(objdir), $(SRC:.c=.o))
 PROG=$(bindir)/app
 
 FUTSRC:=$(call rwildcard,$(futdir),*.fut)
+FUTBENCH:=$(subst $(futdir),$(benchdir),$(FUTSRC:.fut=.prof))
 OPENCL=-lOpenCL
+
+ifdef FUTHARK_DEVICE
+FUTHARK=1
+FUTFLAGS=-DFUTHARK=1 -DFUTHARK_DEVICE="\"$(FUTHARK_DEVICE)\""
+else
+FUTFLAGS=-DFUTHARK=$(FUTHARK)
+endif
 
 ifeq ($(FUTHARK),1)
 FUTC:=$(subst $(futdir),$(gendir),$(FUTSRC:.fut=.c))
@@ -34,8 +43,8 @@ endif
 
 LIBS=-lmvec -lm $(OPENCL)
 
-CC=gcc -W -Wall -Wextra -pedantic -std=c2x -O3 -march=native -ffast-math -DFUTHARK=$(FUTHARK)
-RM=rm -ifR ./$(objdir)/* ./*.bak ./*.old ./$(bindir)/* ./$(gendir)/* ./$(objgendir)/*
+CC=gcc -W -Wall -Wextra -pedantic -std=c2x -O3 -march=native -ffast-math $(FUTFLAGS)
+RM=rm -ifR ./$(objdir)/* ./*.bak ./*.old ./$(bindir)/* ./$(gendir)/* ./$(objgendir)/* ./$(benchdir)/*
 
 all: $(PROG)
 
@@ -62,3 +71,16 @@ clean:
 
 run: $(PROG)
 	@$(PROG)
+
+$(benchdir)/%.fut: $(futdir)/%.fut
+	mkdir --parents $(dir $@)
+	@cp $< $@
+
+$(benchdir)/%.json: $(benchdir)/%.fut
+	@futhark bench --backend=opencl $< --profile --json=$@
+
+$(benchdir)/%.prof: $(benchdir)/%.json
+	@futhark profile $<
+	@mv $(basename $(notdir $@)).prof $@
+
+benchmark: $(FUTBENCH)

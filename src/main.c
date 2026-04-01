@@ -161,7 +161,10 @@ int main() {
 
 #if FUTHARK
     struct futhark_context_config* cfg = futhark_context_config_new();
-    futhark_context_config_set_device(cfg, "UHD");
+    #ifdef FUTHARK_DEVICE
+    fprintf(stderr, "Choosing device: %s\n", FUTHARK_DEVICE);
+    futhark_context_config_set_device(cfg, FUTHARK_DEVICE);
+    #endif
     struct futhark_context* ctx = futhark_context_new(cfg);
 
     float inputss[INPUT_N * TRAINING_BATCH_SIZE];
