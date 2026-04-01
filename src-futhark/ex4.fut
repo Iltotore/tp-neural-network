@@ -28,11 +28,6 @@ def train_iteration (j: i64) (h: i64) (i: i64) (hiddenWeights: [h][j]f32) (outpu
   let sumDelta = f32.sum (map f32.abs outputDeltas)
   in (hiddenGradients, outputGradients, sumDelta)
 
-def apply_update [i][j] (lr: f32) (weights: [i][j]f32) (grads: [i][j]f32) : [i][j]f32 =
-  map2 (\wRow gRow ->
-          map2 (\w g -> w + lr * g) wRow gRow)
-       weights grads
-
 -- Train the model on a batch of N images
 -- ==
 -- entry: train_batch
@@ -50,5 +45,3 @@ entry train_batch (n: i64) (j: i64) (h: i64) (i: i64) (lr: f32) (inputss: [n][j]
   let newOW = map2 (map2 (\w g -> w + batchLR * g)) outputWeights sumOG
   in
     (newHW, newOW, sumDelta)
-
-entry test: i32 = 5
