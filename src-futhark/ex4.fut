@@ -41,13 +41,10 @@ entry train_batch (n: i64) (j: i64) (h: i64) (i: i64) (lr: f32) (inputss: [n][j]
   let (hiddenGradientss, outputGradientss, sumsDelta) =
     unzip3 (map2 (train_iteration j h i hiddenWeights outputWeights) inputss labels)
 
-  let zeroHG = replicate h (replicate j 0.0f32)
-  let zeroOG = replicate i (replicate h 0.0f32)
-  let sumHG = reduce (map2 (map2 (+))) zeroHG hiddenGradientss
-  let sumOG = reduce (map2 (map2 (+))) zeroOG outputGradientss
-
+  let sumHG = map (map (reduce (+) 0)) (map transpose (transpose hiddenGradientss))
+  let sumOG = map (map (reduce (+) 0)) (map transpose (transpose outputGradientss))
   let batchLR = lr / f32.i64 n
-  let sumDelta = reduce (+) 0 sumsDelta
+  let sumDelta = f32.sum sumsDelta
 
   let newHW = map2 (map2 (\w g -> w + batchLR * g)) hiddenWeights sumHG
   let newOW = map2 (map2 (\w g -> w + batchLR * g)) outputWeights sumOG

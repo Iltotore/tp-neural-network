@@ -73,7 +73,7 @@ run: $(PROG)
 	@$(PROG)
 
 $(benchdir)/%.fut: $(futdir)/%.fut
-	mkdir --parents $(dir $@)
+	@mkdir --parents $(dir $@)
 	@cp $< $@
 
 $(benchdir)/%.json: $(benchdir)/%.fut
